@@ -1,0 +1,59 @@
+name: sync-env
+
+# Writes one game's .env file to the box from a GitHub secret. Run this by
+# hand (Actions tab -> sync-env -> Run workflow) when you first set up a
+# game, and again after restoring onto a new box, before `make up`.
+#
+# This is what makes .env recoverable if the box is lost — see README.md.
+# It does not run automatically on push; .env changes are deliberate, not
+# something a code push should trigger.
+#
+# Requires a repo secret GAME_ENV_JSON: a JSON object mapping game
+# directory name -> full .env file contents, e.g.
+#   {"example-game": "GAME_NAME=example-game\nIMAGE_TAG=1.0.0\nGAME_PORT=27015\nDATA_DIR=/srv/games/example-game/data\n"}
+# Update that secret by hand whenever a real .env value changes, so GitHub
+# is the source of truth, not the box. Also requires the same DEPLOY_*
+# secrets as deploy.yml.
+#
+# Caveat: GitHub's log masking only matches the exact configured secret
+# string. GAME_ENV_JSON is one blob covering every game; the single game's
+# value extracted from it via fromJSON() is a substring GitHub does not
+# reliably mask on its own. This workflow never echoes $ENV_CONTENT, only
+# pipes it straight to ssh — keep it that way, don't add debug printing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Directory name under games/, e.g. example-game"
+        required: true
+        type: string
+
+jobs:
+  sync-env:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write .env to the box
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          REPO_PATH: ${{ secrets.DEPLOY_REPO_PATH }}
+          GAME: ${{ inputs.game }}
+          ENV_CONTENT: ${{ fromJSON(secrets.GAME_ENV_JSON)[inputs.game] }}
+        run: |
+          if [ -z "$ENV_CONTENT" ]; then
+            echo "No entry for '$GAME' in the GAME_ENV_JSON secret." >&2
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+          printf '%s' "$ENV_CONTENT" | ssh -i ~/.ssh/deploy_key -p "$DEPLOY_SSH_PORT" \
+            "$DEPLOY_USER@$DEPLOY_HOST" "cat > '$REPO_PATH/games/$GAME/.env'"
+
+          echo "Wrote .env for $GAME. Run 'make up' (or redeploy) on the box next."

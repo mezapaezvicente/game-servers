@@ -1,0 +1,24 @@
+services:
+  game:
+    # PLACEHOLDER. Replace with the real image for this game.
+    # Always a pinned tag from .env's IMAGE_TAG — never :latest.
+    image: ghcr.io/example/placeholder-game-server:${IMAGE_TAG}
+    container_name: ${GAME_NAME}
+    restart: unless-stopped
+    ports:
+      # Most game servers are UDP. Change to tcp (or add both) if this
+      # game needs it.
+      - "${GAME_PORT}:${GAME_PORT}/udp"
+    volumes:
+      - ${DATA_DIR}:/data
+    environment:
+      - GAME_PORT=${GAME_PORT}
+    healthcheck:
+      # PLACEHOLDER. Replace with a real check for this game (query the
+      # game port, check a log line, whatever the image supports).
+      # `make update` polls this to decide if the new tag came up healthy.
+      test: ["CMD-SHELL", "true"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

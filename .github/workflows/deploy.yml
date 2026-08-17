@@ -1,0 +1,55 @@
+name: deploy
+
+# Path filtered: a push touching games/minecraft/ only redeploys minecraft.
+# A push touching multiple game directories deploys each of them in turn.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "games/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine changed game directories
+        id: changed
+        run: |
+          if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            RANGE="${{ github.sha }}~1..${{ github.sha }}"
+          else
+            RANGE="${{ github.event.before }}..${{ github.sha }}"
+          fi
+          GAMES=$(git diff --name-only "$RANGE" -- games/ | cut -d/ -f2 | sort -u)
+          echo "games<<GAMES_EOF" >> "$GITHUB_OUTPUT"
+          echo "$GAMES" >> "$GITHUB_OUTPUT"
+          echo "GAMES_EOF" >> "$GITHUB_OUTPUT"
+
+      # Assumes this repo is already cloned on the box (e.g. at
+      # /home/deploy/game-servers) with a deploy key that has pull access.
+      # This job pulls the latest commit, then runs `make update` in each
+      # changed game directory, which itself does: snapshot, pull the
+      # pinned tag, recreate, health check.
+      - name: Deploy each changed game
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT || '22' }}
+          REPO_PATH: ${{ secrets.DEPLOY_REPO_PATH }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "$DEPLOY_SSH_PORT" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+          while IFS= read -r game; do
+            [ -z "$game" ] && continue
+            echo "==> deploying $game"
+            ssh -i ~/.ssh/deploy_key -p "$DEPLOY_SSH_PORT" "$DEPLOY_USER@$DEPLOY_HOST" \
+              "cd '$REPO_PATH' && git pull --ff-only && cd games/$game && make update"
+          done <<< "${{ steps.changed.outputs.games }}"
