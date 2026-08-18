@@ -14,7 +14,7 @@ sets up the shared `restic` config these Makefiles depend on.
 ```
 _template/          copy this to start a new game
 games/
-  example-game/      a filled-in copy of _template, placeholder image
+  zomboid/            Project Zomboid dedicated server
 lib/
   backup.sh           shared, called by every game's `make backup`
   restore.sh          shared, called by every game's `make restore`

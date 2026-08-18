@@ -9,9 +9,13 @@ After merging a port change, update `ufw_allowed_ports` in the
 file does not open the port by itself, it's just the record of what's in
 use.
 
-| Game         | Port  | Proto | Notes                          |
-|--------------|-------|-------|---------------------------------|
-| example-game | 27015 | udp   | placeholder, not actually open |
+| Game    | Port  | Proto | Notes                       |
+|---------|-------|-------|------------------------------|
+| zomboid | 16261 | udp   | game port                   |
+| zomboid | 16262 | udp   | direct connect (UDPPort)    |
+| zomboid | 8766  | udp   | steam port 1                |
+| zomboid | 8767  | udp   | steam port 2                |
+| zomboid | 27015 | tcp   | RCON — admin IPs only       |
 
 Reserved / do not use:
 

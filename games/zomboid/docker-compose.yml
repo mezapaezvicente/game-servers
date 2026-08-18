@@ -1,0 +1,45 @@
+services:
+  game:
+    # Actively maintained; tags track the game's own build number
+    # (42.x.y-release = Build 42 stable). Never "latest".
+    image: danixu86/project-zomboid-dedicated-server:${IMAGE_TAG}
+    container_name: ${GAME_NAME}
+    restart: unless-stopped
+    ports:
+      - "${GAME_PORT}:${GAME_PORT}/udp"
+      - "${DIRECT_PORT}:${DIRECT_PORT}/udp"
+      - "${STEAM_PORT1}:${STEAM_PORT1}/udp"
+      - "${STEAM_PORT2}:${STEAM_PORT2}/udp"
+      - "${RCON_PORT}:${RCON_PORT}/tcp"
+    volumes:
+      # The only directory this image persists to: saves, server .ini,
+      # RCON password, logs.
+      - ${DATA_DIR}:/home/steam/Zomboid
+    environment:
+      # Mapped to the image's own (fixed) variable names.
+      - PORT=${GAME_PORT}
+      - UDPPORT=${DIRECT_PORT}
+      - STEAMPORT1=${STEAM_PORT1}
+      - STEAMPORT2=${STEAM_PORT2}
+      - ADMINUSERNAME=${ADMIN_USERNAME}
+      - ADMINPASSWORD=${ADMIN_PASSWORD}
+      - RCONPASSWORD=${RCON_PASSWORD}
+      - DISPLAYNAME=${SERVER_NAME}
+      - PASSWORD=${SERVER_PASSWORD}
+      - PUBLIC=${PUBLIC}
+      - MEMORY=${MEMORY}
+      - MOD_IDS=${MOD_IDS}
+      - WORKSHOP_IDS=${WORKSHOP_IDS}
+    healthcheck:
+      # RCON's TCP port only starts listening once the server core has
+      # finished initializing, so it's a reliable readiness signal without
+      # needing any extra tooling baked into the image (UDP game ports
+      # can't be health-checked this way — no handshake).
+      test: ["CMD-SHELL", "timeout 3 bash -c '</dev/tcp/127.0.0.1/${RCON_PORT}' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # Zomboid's JVM boot is slow — commonly 1-3+ minutes even without
+      # mods. Must stay in sync with the longer wait loop in Makefile's
+      # `update` target.
+      start_period: 5m

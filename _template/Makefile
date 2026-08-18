@@ -1,9 +1,18 @@
-include .env
+# -include, not include: a fresh checkout has no .env yet, and `make setup`
+# is how you create one. A plain `include` fails hard on a missing file,
+# which would make `make setup` unable to run on the very first checkout.
+-include .env
 export
 
 LIB_DIR := ../../lib
 
-.PHONY: up down logs backup restore update status
+.PHONY: setup up down logs backup restore update status
+
+# Interactive by default. For scripted/customized use:
+#   make setup ARGS="--set GAME_PORT=27016 --yes"
+# See ./setup.sh --help for all options.
+setup:
+	@./setup.sh $(ARGS)
 
 up:
 	docker compose up -d
