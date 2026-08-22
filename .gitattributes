@@ -1,0 +1,7 @@
+# Force LF on scripts and YAML regardless of the checkout platform's core.autocrlf.
+# A CRLF-mangled setup.sh fails immediately under `set -euo pipefail` bash on
+# WSL/Linux/CI even though it looks fine in a Windows editor.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Makefile text eol=lf

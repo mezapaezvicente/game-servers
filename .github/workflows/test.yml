@@ -1,0 +1,39 @@
+name: test
+
+# Every push/PR, not just main — unlike deploy.yml, this never touches a
+# real box, so there's no reason to gate it to main only.
+on:
+  push:
+  pull_request:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest runners ship shellcheck preinstalled.
+      - name: shellcheck each setup.sh with its own relative sources resolved
+        run: ./test/run-shellcheck.sh
+
+  reserved-env-names:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./test/check-reserved-env-names.sh
+
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install bats-core
+        run: |
+          git clone --depth 1 https://github.com/bats-core/bats-core.git /tmp/bats-core
+          sudo /tmp/bats-core/install.sh /usr/local
+      - run: bats test/setup_common.bats test/setup_sh.bats
+
+  compose-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker compose up + healthcheck for zomboid
+        run: ./test/integration-zomboid.sh

@@ -105,9 +105,10 @@ registry. `RCON_PORT` (27015/tcp) is the admin console: make sure
 - **Mods don't show up in-game after the first `make up`.** Expected — see
   "Mods take three restarts to fully apply" above. Not a bug.
 - **Players report they can connect directly but not via the in-game
-  browser (or vice versa).** Usually a `PUBLIC` or port mismatch — double
-  check `PUBLIC=true` if you want it listed, and that all 5 ports in
-  `.env` are actually open in `infra-base`'s firewall, not just `GAME_PORT`.
+  browser (or vice versa).** Usually a `SERVER_PUBLIC` or port mismatch —
+  double check `SERVER_PUBLIC=true` if you want it listed, and that all 5
+  ports in `.env` are actually open in `infra-base`'s firewall, not just
+  `GAME_PORT`.
 - **RCON port reachable from outside admin IPs.** This is a firewall
   misconfiguration in `infra-base`, not this repo — `27015/tcp` must only
   be opened to admin IPs in `ufw_allowed_ports`, never `0.0.0.0`.
@@ -115,14 +116,16 @@ registry. `RCON_PORT` (27015/tcp) is the admin console: make sure
   is the container's stdout/stderr, which is where this image writes
   everything, including the Java process's own log lines. There's no
   separate log file to `tail` on the host outside of that.
-- **Testing locally on Windows: `docker compose config` shows
-  `PUBLIC: C:\Users\Public` instead of `.env`'s value.** `PUBLIC` is a
-  built-in Windows environment variable, and Docker Compose gives shell
-  environment variables precedence over `.env` file values. Doesn't affect
-  the Linux production box (no such variable there), but locally you need
-  `$env:PUBLIC = "false"` (or whatever `.env` has) before `docker compose`
-  commands, or it silently lists the server publicly regardless of what
-  `.env` says.
+- **Testing locally on Windows: why `SERVER_PUBLIC` instead of `PUBLIC` in
+  `.env`.** Originally named `PUBLIC`, which collided with Windows' built-in
+  `%PUBLIC%` env var (`C:\Users\Public`) — Docker Compose gives shell env
+  vars precedence over `.env` file values, so `docker compose config` would
+  silently resolve to the Windows path instead of `.env`'s `true`/`false` on
+  any Windows host, no workaround needed once you know to look for it, but
+  easy to miss. Renamed to `SERVER_PUBLIC` (still mapped to the image's own
+  `PUBLIC=` var in `docker-compose.yml`) so this can't recur. If you see a
+  variable in a new game's `.env.example` that shadows a real Windows/POSIX
+  env var name, rename it the same way rather than adding a workaround.
 
 ## Before relying on this
 

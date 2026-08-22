@@ -113,7 +113,11 @@ for kv in "${OVERRIDES[@]+"${OVERRIDES[@]}"}"; do
   fi
   old="$(env_get "$ENV_FILE" "$key")"
   env_set "$ENV_FILE" "$key" "$value"
-  log_info "$key: '${old}' -> '${value}'"
+  if [[ "$key" =~ (PASSWORD|SECRET) ]]; then
+    log_info "$key: $(mask "$old") -> $(mask "$value")"
+  else
+    log_info "$key: '${old}' -> '${value}'"
+  fi
 done
 
 # Prompt for secrets still at their .env.example placeholder, unless --yes.

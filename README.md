@@ -18,10 +18,12 @@ games/
 lib/
   backup.sh           shared, called by every game's `make backup`
   restore.sh          shared, called by every game's `make restore`
+test/                shellcheck/bats/compose-integration checks, see Testing below
 PORTS.md             source of truth for port allocation on the box
 API.md                design doc for a future local API + Discord bot
 .github/workflows/
   deploy.yml           path-filtered: pushes to games/<x>/ deploy only <x>
+  test.yml             shellcheck + bats + docker-compose integration, every push/PR
 ```
 
 ## Adding a game
@@ -94,6 +96,39 @@ available:
   confirm the file lands correctly, the same way you're testing
   `make restore` below. An unexercised recovery path is not a recovery
   path.
+
+## Testing
+
+Runs in CI on every push/PR (`.github/workflows/test.yml`) and locally the
+same way — all of it is plain Bash/Docker, nothing here needs a real box:
+
+- `./test/run-shellcheck.sh` — shellchecks every `setup.sh` from its own
+  directory (so `-x` resolves `../../lib/setup-common.sh` correctly) plus
+  `lib/*.sh`.
+- `./test/check-reserved-env-names.sh` — flags any `.env.example` variable
+  that collides with a built-in Windows/POSIX env var name (how the
+  `PUBLIC`/`SERVER_PUBLIC` bug happened — see `games/zomboid/README.md`'s
+  Troubleshooting section). Run this whenever a new game's `.env.example`
+  is added.
+- `bats test/setup_common.bats test/setup_sh.bats` — unit/behavioral tests
+  for `lib/setup-common.sh` and both `_template/setup.sh` and each game's
+  `setup.sh`, against a stub `docker` on `PATH` (`test/fixtures/stub-bin`)
+  so no real daemon is needed. Install bats-core locally with `git clone
+  https://github.com/bats-core/bats-core.git && ./bats-core/install.sh
+  ~/.local` (no sudo required) — do this inside WSL on Windows, not native
+  PowerShell.
+- `./test/integration-zomboid.sh` — the one test that needs a real Docker
+  daemon: brings zomboid's real `docker-compose.yml` up against a synthetic
+  `.env` and waits for the healthcheck. Slow (image pull + up to a few
+  minutes of JVM boot) and the layer that actually catches
+  `docker compose config` bugs like the `PUBLIC` collision — not something
+  the bats suite can see, since that only exercises `setup.sh` in
+  isolation.
+
+On Windows, run all of this from WSL2 — it's the same Docker daemon Docker
+Desktop already exposes there, so nothing needs a second install, and
+results match the `ubuntu-latest` CI runner exactly (same Linux/Docker
+stack, not something WSL is standing in for).
 
 ## Before you invite anyone
 

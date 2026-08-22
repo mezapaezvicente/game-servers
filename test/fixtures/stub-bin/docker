@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Stub `docker` for tests: setup.sh only needs `command -v docker` to
+# succeed and `docker compose version` to exit 0. No real daemon involved.
+exit 0

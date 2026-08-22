@@ -26,7 +26,8 @@ services:
       - RCONPASSWORD=${RCON_PASSWORD}
       - DISPLAYNAME=${SERVER_NAME}
       - PASSWORD=${SERVER_PASSWORD}
-      - PUBLIC=${PUBLIC}
+      # Host-side var is SERVER_PUBLIC, not PUBLIC — see .env.example.
+      - PUBLIC=${SERVER_PUBLIC}
       - MEMORY=${MEMORY}
       - MOD_IDS=${MOD_IDS}
       - WORKSHOP_IDS=${WORKSHOP_IDS}
